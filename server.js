@@ -1,11 +1,17 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const app = express();
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const fast2sms = require("fast-two-sms");  // Ensure that you install the package 'fast-two-sms'
+const app = express();
 const port = 3000;
-app.use(express.json());
 dotenv.config();
-const authenticateJWT = require("./middlewares/authenticateJWT");
+app.use(express.json());
+
+// Import UserModel (make sure you have created it)
+const UserModel = require("./models/User");  // Example path
+
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose
@@ -16,13 +22,17 @@ mongoose
   .catch((err) => {
     console.error("Error connecting to MongoDB:", err);
   });
+
 let otpStore = {};
-//generate otp
+
+// Generate OTP using otplib
+const { authenticator } = require("otplib");  // Make sure otplib is installed
 const generateOTP = () => {
-  const secret = onlostpointercapture.authenticator.generatSecret();
-  return onlostpointercapture.authenticator.generate(secret);
+  const secret = authenticator.generateSecret();
+  return authenticator.generate(secret);
 };
-//send otp mobile using fast2sms
+
+// Send OTP using Fast2SMS API
 const sendMessage = async (mobile, token) => {
   const options = {
     authorization: process.env.FAST2SMS_API_KEY,
@@ -40,63 +50,63 @@ const sendMessage = async (mobile, token) => {
 };
 
 app.post("/signup", async (req, res) => {
-    const { name, email, password, phone } = req.body;
-  
-    try {
-      if (!name || !email || !password) {
-        return res.status(400).json({ error: "All fields are required" });
-      }
-  
-      const existingUser = await UserModel.findOne({ email });
-      if (existingUser) {
-        return res.status(409).json({ error: "Email already exists" });
-      }
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      const newUser = new UserModel({
-        name,
-        email,
-        password: hashedPassword,
-        phone: phone || null,
-      });
-  
-      const savedUser = await newUser.save();
-      const token = generateOTP(); // Generate OTP
-      otpStore[phone] = token; // Store OTP
-  
-      const result = await sendMessage(phone, token); // Send OTP
-      if (result.success) {
-        res.status(201).json({
-          name: savedUser.name,
-          email: savedUser.email,
-          id: savedUser._id,
-          otpSent: true,
-          message: "User registered successfully. OTP sent to the registered phone number.",
-        });
-      } else {
-        res.status(500).json({ error: "User registered, but failed to send OTP." });
-      }
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+  const { name, email, password, phone } = req.body;
+
+  try {
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
     }
-  });
-  
+
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ error: "Email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new UserModel({
+      name,
+      email,
+      password: hashedPassword,
+      phone: phone || null,
+    });
+
+    const savedUser = await newUser.save();
+    const token = generateOTP(); // Generate OTP
+    otpStore[phone] = token; // Store OTP
+
+    const result = await sendMessage(phone, token); // Send OTP
+    if (result.success) {
+      res.status(201).json({
+        name: savedUser.name,
+        email: savedUser.email,
+        id: savedUser._id,
+        otpSent: true,
+        message: "User registered successfully. OTP sent to the registered phone number.",
+      });
+    } else {
+      res.status(500).json({ error: "User registered, but failed to send OTP." });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // OTP Verification Route
 app.post("/verify-otp", (req, res) => {
-    const { mobileNumber, otp } = req.body;
-  
-    if (!otp || !mobileNumber) {
-      return res.status(400).json({ success: false, message: "Mobile number and OTP are required." });
-    }
-  
-    if (otpStore[mobileNumber] && otpStore[mobileNumber] === otp) {
-      res.status(200).json({ success: true, message: "OTP verified successfully!" });
-    } else {
-      res.status(400).json({ success: false, message: "Invalid OTP." });
-    }
-  });
-  
+  const { mobileNumber, otp } = req.body;
+
+  if (!otp || !mobileNumber) {
+    return res.status(400).json({ success: false, message: "Mobile number and OTP are required." });
+  }
+
+  if (otpStore[mobileNumber] && otpStore[mobileNumber] === otp) {
+    res.status(200).json({ success: true, message: "OTP verified successfully!" });
+  } else {
+    res.status(400).json({ success: false, message: "Invalid OTP." });
+  }
+});
+
 // User Login Route with JWT token generation
 app.post("/login", async (req, res) => {
   try {
@@ -113,20 +123,17 @@ app.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '90d' // Token expires in 1 hour
+      expiresIn: "90d", // Token expires in 90 days
     });
 
     res.status(200).json({
-
-        message: "Login successful",
+      message: "Login successful",
       token: token, // Send the JWT token to the client
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-  
-
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
