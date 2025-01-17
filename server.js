@@ -4,10 +4,11 @@ const app = express();
 const mongoose = require("mongoose");
 const port = 3000;
 app.use(express.json());
-const mongoURI = process.env.MONGO_URI;
+dotenv.config();
+const MONGO_URI = process.env.MONGO_URI;
 
 mongoose
-  .connect(mongoURI)
+  .connect(MONGO_URI)
   .then(() => {
     console.log("Connected to MongoDB");
   })
