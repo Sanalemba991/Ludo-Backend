@@ -3,17 +3,19 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const fast2sms = require("fast-two-sms");  // Ensure that you install the package 'fast-two-sms'
-const app = express();
-const port = 3000;
+const fast2sms = require("fast-two-sms");
+const UserModel = require("./model/User");
+
 dotenv.config();
+const app = express();
+const port = process.env.PORT || 3000;
+
 app.use(express.json());
 
-// Import UserModel (make sure you have created it)
-const UserModel = require("./models/User");  // Example path
-
 const MONGO_URI = process.env.MONGO_URI;
+const otpStore = {}; // To store OTPs temporarily
 
+// Connect to MongoDB
 mongoose
   .connect(MONGO_URI)
   .then(() => {
@@ -23,16 +25,12 @@ mongoose
     console.error("Error connecting to MongoDB:", err);
   });
 
-let otpStore = {};
-
-// Generate OTP using otplib
-const { authenticator } = require("otplib");  // Make sure otplib is installed
+// Function to generate OTP (using a simple random 6-digit number)
 const generateOTP = () => {
-  const secret = authenticator.generateSecret();
-  return authenticator.generate(secret);
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send OTP using Fast2SMS API
+// Function to send OTP via Fast2SMS
 const sendMessage = async (mobile, token) => {
   const options = {
     authorization: process.env.FAST2SMS_API_KEY,
@@ -49,6 +47,7 @@ const sendMessage = async (mobile, token) => {
   }
 };
 
+// Signup Route
 app.post("/signup", async (req, res) => {
   const { name, email, password, phone } = req.body;
 
@@ -76,6 +75,7 @@ app.post("/signup", async (req, res) => {
     otpStore[phone] = token; // Store OTP
 
     const result = await sendMessage(phone, token); // Send OTP
+
     if (result.success) {
       res.status(201).json({
         name: savedUser.name,
@@ -135,6 +135,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// Start the server
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
