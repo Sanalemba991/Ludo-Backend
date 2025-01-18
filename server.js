@@ -19,7 +19,7 @@ const MONGO_URI = process.env.MONGO_URI;
 
 
 mongoose
-  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(MONGO_URI)
   .then(() => {
     console.log("Connected to MongoDB");
   })
@@ -71,7 +71,7 @@ app.post("/signup", async (req, res) => {
     });
 
     const savedUser = await newUser.save();
-    const token = generateOTP(); // Generate OTP
+    const token = generateOTP(); 
     otpStore[phone] = { otp: token, timestamp: Date.now() };
     const result = await sendMessage(phone, token); 
 
