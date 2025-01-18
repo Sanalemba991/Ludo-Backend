@@ -11,7 +11,7 @@ const authenticateJWT = (req, res, next) => {
     if (err) {
       return res.status(403).json({ message: 'Unauthorized: Invalid token' });
     }
-    req.user = user; // Store user info in req.user
+    req.user = user;
     next();
   });
 };
