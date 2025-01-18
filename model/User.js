@@ -10,24 +10,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      lowercase: true,  // Ensures email is stored in lowercase
+      lowercase: true,  
       match: [
         /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
         "Please provide a valid email address",
-      ],  // Basic email regex validation
+      ], 
     },
     password: {
       type: String,
       required: true,
-      minlength: 8,  // Password must be at least 8 characters
+      minlength: 8,  
     },
     phone: {
       type: String,
       default: null,
-      match: [/^\d{10}$/, "Please provide a valid 10-digit phone number"],  // Phone validation (you can modify the regex if needed)
+      match: [/^\d{10}$/, "Please provide a valid 10-digit phone number"], 
     },
   },
-  { timestamps: true }  // Automatically adds createdAt and updatedAt fields
+  { timestamps: true }  
 );
 
 const User = mongoose.model("User", userSchema);
