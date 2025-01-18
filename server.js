@@ -6,18 +6,18 @@ const jwt = require("jsonwebtoken");
 const fast2sms = require("fast-two-sms");
 const UserModel = require("./model/User");
 
-dotenv.config(); // Load environment variables from .env file
+dotenv.config(); 
 
 const app = express();
 const port = process.env.PORT || 3000;
-const otpStore = {}; // To store OTPs temporarily
+const otpStore = {}; 
 
 app.use(express.json());
 
-// MongoDB connection URI from environment variable
+
 const MONGO_URI = process.env.MONGO_URI;
 
-// Connect to MongoDB
+
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
@@ -27,12 +27,12 @@ mongoose
     console.error("Error connecting to MongoDB:", err);
   });
 
-// Function to generate OTP (6-digit number)
+
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Function to send OTP via Fast2SMS
+
 const sendMessage = async (mobile, token) => {
   const options = {
     authorization: process.env.FAST2SMS_API_KEY,
@@ -49,7 +49,6 @@ const sendMessage = async (mobile, token) => {
   }
 };
 
-// Signup Route
 app.post("/signup", async (req, res) => {
   const { name, email, password, phone } = req.body;
 
@@ -73,9 +72,8 @@ app.post("/signup", async (req, res) => {
 
     const savedUser = await newUser.save();
     const token = generateOTP(); // Generate OTP
-    otpStore[phone] = { otp: token, timestamp: Date.now() }; // Store OTP with timestamp
-
-    const result = await sendMessage(phone, token); // Send OTP
+    otpStore[phone] = { otp: token, timestamp: Date.now() };
+    const result = await sendMessage(phone, token); 
 
     if (result.success) {
       res.status(201).json({
@@ -93,7 +91,6 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// OTP Verification Route
 app.post("/verify-otp", (req, res) => {
   const { mobileNumber, otp } = req.body;
 
@@ -106,10 +103,10 @@ app.post("/verify-otp", (req, res) => {
     return res.status(400).json({ success: false, message: "OTP not sent or expired." });
   }
 
-  // Check if OTP is expired (e.g., 5 minutes expiry)
-  const otpExpiryTime = 5 * 60 * 1000; // 5 minutes
+
+  const otpExpiryTime = 5 * 60 * 1000; 
   if (Date.now() - otpData.timestamp > otpExpiryTime) {
-    delete otpStore[mobileNumber]; // Remove expired OTP
+    delete otpStore[mobileNumber]; 
     return res.status(400).json({ success: false, message: "OTP has expired." });
   }
 
@@ -120,7 +117,7 @@ app.post("/verify-otp", (req, res) => {
   }
 });
 
-// User Login Route with JWT token generation
+
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -140,19 +137,19 @@ app.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "90d", // Token expires in 90 days
+      expiresIn: "90d", 
     });
 
     res.status(200).json({
       message: "Login successful",
-      token, // Send the JWT token to the client
+      token, 
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Start the server
+
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
