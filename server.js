@@ -6,17 +6,15 @@ const jwt = require("jsonwebtoken");
 const fast2sms = require("fast-two-sms");
 const UserModel = require("./model/User");
 
-dotenv.config(); 
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-const otpStore = {}; 
+const otpStore = {};
 
 app.use(express.json());
 
-
 const MONGO_URI = process.env.MONGO_URI;
-
 
 mongoose
   .connect(MONGO_URI)
@@ -27,11 +25,9 @@ mongoose
     console.error("Error connecting to MongoDB:", err);
   });
 
-
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
-
 
 const sendMessage = async (mobile, token) => {
   const options = {
@@ -71,9 +67,10 @@ app.post("/signup", async (req, res) => {
     });
 
     const savedUser = await newUser.save();
-    const token = generateOTP(); 
+    const token = generateOTP();
     otpStore[phone] = { otp: token, timestamp: Date.now() };
-    const result = await sendMessage(phone, token); 
+
+    const result = await sendMessage(phone, token);
 
     if (result.success) {
       res.status(201).json({
@@ -81,10 +78,13 @@ app.post("/signup", async (req, res) => {
         email: savedUser.email,
         id: savedUser._id,
         otpSent: true,
-        message: "User registered successfully. OTP sent to the registered phone number.",
+        message:
+          "User registered successfully. OTP sent to the registered phone number.",
       });
     } else {
-      res.status(500).json({ error: "User registered, but failed to send OTP." });
+      res
+        .status(500)
+        .json({ error: "User registered, but failed to send OTP." });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -95,35 +95,43 @@ app.post("/verify-otp", (req, res) => {
   const { mobileNumber, otp } = req.body;
 
   if (!otp || !mobileNumber) {
-    return res.status(400).json({ success: false, message: "Mobile number and OTP are required." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Mobile number and OTP are required." });
   }
 
   const otpData = otpStore[mobileNumber];
   if (!otpData) {
-    return res.status(400).json({ success: false, message: "OTP not sent or expired." });
+    return res
+      .status(400)
+      .json({ success: false, message: "OTP not sent or expired." });
   }
 
-
-  const otpExpiryTime = 5 * 60 * 1000; 
+  const otpExpiryTime = 5 * 60 * 1000;
   if (Date.now() - otpData.timestamp > otpExpiryTime) {
-    delete otpStore[mobileNumber]; 
-    return res.status(400).json({ success: false, message: "OTP has expired." });
+    delete otpStore[mobileNumber];
+    return res
+      .status(400)
+      .json({ success: false, message: "OTP has expired." });
   }
 
   if (otpData.otp === otp) {
-    res.status(200).json({ success: true, message: "OTP verified successfully!" });
+    res
+      .status(200)
+      .json({ success: true, message: "OTP verified successfully!" });
   } else {
     res.status(400).json({ success: false, message: "Invalid OTP." });
   }
 });
-
 
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const user = await UserModel.findOne({ email });
@@ -136,19 +144,22 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "90d", 
-    });
+    const token = jwt.sign(
+      { email: user.email, id: user._id },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "90d",
+      }
+    );
 
     res.status(200).json({
       message: "Login successful",
-      token, 
+      token,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
