@@ -22,8 +22,7 @@ mongoose
     console.error('Error connecting to MongoDB:', err);
   });
 
-app.use('/auth', authRoutes); // Use the routes for all authentication-related endpoints
-
+app.use('/auth', authRoutes);
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
